@@ -1,0 +1,5 @@
+pyaudio
+pynput
+openai
+python-libxdo
+

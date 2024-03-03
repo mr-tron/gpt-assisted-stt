@@ -1,12 +1,13 @@
+import time
+
 from pynput.keyboard import Key, Listener
 from audio import record_audio
 from threading import Event, Thread
-from openai import OpenAI
+from ai import transcript, post_proccess
 from xdo import Xdo
 
 
 xdo = Xdo() # fake input for typing
-openai_client = OpenAI(api_key="")
 
 
 def main():
@@ -17,14 +18,14 @@ def main():
             on_release=hotkey_manage.on_release) as listener:
         listener.join()
 
-
-def transcript(audio_file):
-    transcription = openai_client.audio.transcriptions.create(
-        model="whisper-1",
-        file=audio_file
-    )
-    print(transcription.text)
-    keyboard_type(transcription.text)
+def text_processing(audio):
+    text = transcript(audio)
+    t = time.time()
+    stream = post_proccess(text)
+    print("get stream", stream)
+    for chunk in stream:
+        keyboard_type(chunk.choices[0].delta.content or "")
+    print("printing %s" % (time.time() - t))
 
 
 class HotkeyManager(object):
@@ -38,7 +39,7 @@ class HotkeyManager(object):
         if key == Key.f8 and self.hotkey_state == 1:
             self.hotkey_state = 2
             self.stop = Event()
-            Thread(target=record_audio, args=[self.stop, transcript]).start()
+            Thread(target=record_audio, args=[self.stop, text_processing]).start()
 
     def on_release(self, key):
         if self.hotkey_state == 0:
